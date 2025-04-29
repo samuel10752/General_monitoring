@@ -1,0 +1,56 @@
+[2025-04-28 23:26:50] Dados Atualizados:
+CPU: 15,7%
+RAM: 39,7%
+Armazenamento:
+Disco: Disco Fixo Local (C:), Usado: 489GB, Disponível: 464GB, Total: 953GB
+Disco: Disco Fixo Local (D:), Usado: 352GB, Disponível: 579GB, Total: 931GB
+
+-----------------------------------
+[2025-04-28 23:26:55] Dados Atualizados:
+CPU: 20,3%
+RAM: 39,8%
+Armazenamento:
+Disco: Disco Fixo Local (C:), Usado: 489GB, Disponível: 464GB, Total: 953GB
+Disco: Disco Fixo Local (D:), Usado: 352GB, Disponível: 579GB, Total: 931GB
+
+-----------------------------------
+[2025-04-28 23:27:00] Dados Atualizados:
+CPU: 14,4%
+RAM: 39,5%
+Armazenamento:
+Disco: Disco Fixo Local (C:), Usado: 489GB, Disponível: 464GB, Total: 953GB
+Disco: Disco Fixo Local (D:), Usado: 352GB, Disponível: 579GB, Total: 931GB
+
+-----------------------------------
+[2025-04-28 23:27:05] Dados Atualizados:
+CPU: 5,0%
+RAM: 39,5%
+Armazenamento:
+Disco: Disco Fixo Local (C:), Usado: 489GB, Disponível: 464GB, Total: 953GB
+Disco: Disco Fixo Local (D:), Usado: 352GB, Disponível: 579GB, Total: 931GB
+
+-----------------------------------
+[2025-04-28 23:27:10] Dados Atualizados:
+CPU: 11,2%
+RAM: 39,9%
+Armazenamento:
+Disco: Disco Fixo Local (C:), Usado: 489GB, Disponível: 464GB, Total: 953GB
+Disco: Disco Fixo Local (D:), Usado: 352GB, Disponível: 579GB, Total: 931GB
+
+-----------------------------------
+[2025-04-28 23:27:15] Dados Atualizados:
+CPU: 2,4%
+RAM: 39,9%
+Armazenamento:
+Disco: Disco Fixo Local (C:), Usado: 489GB, Disponível: 464GB, Total: 953GB
+Disco: Disco Fixo Local (D:), Usado: 352GB, Disponível: 579GB, Total: 931GB
+
+-----------------------------------
+[2025-04-28 23:27:20] Dados Atualizados:
+CPU: 4,9%
+RAM: 39,7%
+Armazenamento:
+Disco: Disco Fixo Local (C:), Usado: 489GB, Disponível: 464GB, Total: 953GB
+Disco: Disco Fixo Local (D:), Usado: 352GB, Disponível: 579GB, Total: 931GB
+
+-----------------------------------
