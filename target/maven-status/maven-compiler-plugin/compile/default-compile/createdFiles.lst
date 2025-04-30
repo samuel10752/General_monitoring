@@ -1,0 +1,4 @@
+monitoramento\Agent.class
+monitoramento\AgentMonitor.class
+monitoramento\SystemData.class
+monitoramento\SystemObserver.class
