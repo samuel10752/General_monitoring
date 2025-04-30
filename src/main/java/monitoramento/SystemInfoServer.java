@@ -7,15 +7,9 @@ import oshi.hardware.GlobalMemory;
 import oshi.software.os.OSFileStore;
 import oshi.software.os.OperatingSystem;
 
-import java.io.InputStreamReader;
-import java.io.BufferedReader;
 import java.io.OutputStream;
-import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
-import java.net.URL;
 import java.util.List;
-
-import org.json.JSONObject;
 
 public class SystemInfoServer {
     public static void startServer() throws Exception {
@@ -24,46 +18,33 @@ public class SystemInfoServer {
         // Endpoint /systeminfo
         server.createContext("/systeminfo", exchange -> {
             try {
+                // Sistema e hardware
                 SystemInfo systemInfo = new SystemInfo();
                 OperatingSystem os = systemInfo.getOperatingSystem();
                 CentralProcessor processor = systemInfo.getHardware().getProcessor();
                 GlobalMemory memory = systemInfo.getHardware().getMemory();
                 List<OSFileStore> fileStores = os.getFileSystem().getFileStores();
 
+                // Montagem de informações de armazenamento
                 StringBuilder storageBuilder = new StringBuilder();
                 for (OSFileStore fileStore : fileStores) {
                     if (storageBuilder.length() > 0) {
                         storageBuilder.append(",");
                     }
-                    // Corrigido para exibir o total e o espaço livre em GB
                     storageBuilder.append(String.format(
                             "{ \"name\": \"%s\", \"totalSpace\": %.2f GB, \"freeSpace\": %.2f GB}",
                             fileStore.getMount(),
-                            fileStore.getTotalSpace() / (1024.0 * 1024 * 1024), // Em GB
-                            fileStore.getUsableSpace() / (1024.0 * 1024 * 1024)  // Em GB
+                            fileStore.getTotalSpace() / (1024.0 * 1024 * 1024),
+                            fileStore.getUsableSpace() / (1024.0 * 1024 * 1024)
                     ));
                 }
 
-                // Coleta as informações de localização do ipinfo.io
-                String locationJson = getLocationInfo();
-                JSONObject location = new JSONObject(locationJson);
+                // Latitude e longitude fixas (exemplo: São Paulo)
+                double lat = -23.550520; // Latitude configurada
+                double lon = -46.633308; // Longitude configurada
+                String mapsLink = "https://www.google.com/maps/search/?api=1&query=" + lat + "," + lon;
 
-                // Verificando as chaves 'city' e 'country' e tratando a latitude e longitude
-                String cidade = location.optString("city", "Desconhecida");
-                String pais = location.optString("country", "Desconhecido");
-                double lat = 0; // Variáveis para latitude e longitude
-                double lon = 0;
-
-                // Checando se latitude e longitude estão disponíveis
-                if (location.has("loc")) {
-                    String[] loc = location.getString("loc").split(",");
-                    lat = Double.parseDouble(loc[0]);
-                    lon = Double.parseDouble(loc[1]);
-                }
-
-                String mapsLink = "https://www.openstreetmap.org/?mlat=" + lat + "&mlon=" + lon + "#map=12/" + lat + "/" + lon;
-
-                // Modificado para mostrar a memória RAM em GB
+                // Montagem do JSON final
                 String response = String.format(
                         "{\n" +
                                 "    \"hostName\": \"%s\",\n" +
@@ -75,18 +56,16 @@ public class SystemInfoServer {
                                 "        \"nucleosLogicos\": %d\n" +
                                 "    },\n" +
                                 "    \"memoria\": {\n" +
-                                "         \"total\": %.2f GB\n" +  // Aqui a memória em GB
+                                "        \"total\": %.2f GB\n" +
                                 "    },\n" +
                                 "    \"sistemaOperacional\": {\n" +
                                 "        \"nome\": \"%s\",\n" +
                                 "        \"versao\": \"%s\"\n" +
                                 "    },\n" +
                                 "    \"localizacao\": {\n" +
-                                "        \"cidade\": \"%s\",\n" +
-                                "        \"pais\": \"%s\",\n" +
                                 "        \"latitude\": %f,\n" +
                                 "        \"longitude\": %f,\n" +
-                                "        \"linkOpenStreetMap\": \"%s\"\n" +
+                                "        \"linkGoogleMaps\": \"%s\"\n" +
                                 "    },\n" +
                                 "    \"armazenamento\": [%s]\n" +
                                 "}",
@@ -96,57 +75,24 @@ public class SystemInfoServer {
                         processor.getProcessorIdentifier().getName(),
                         processor.getPhysicalProcessorCount(),
                         processor.getLogicalProcessorCount(),
-                        memory.getTotal() / (1024.0 * 1024 * 1024), // Memória total em GB
+                        memory.getTotal() / (1024.0 * 1024 * 1024),
                         os.getFamily(),
                         os.getVersionInfo().toString(),
-                        cidade,
-                        pais,
                         lat,
                         lon,
                         mapsLink,
                         storageBuilder.toString()
                 );
 
+                // Envio da resposta
                 byte[] responseBytes = response.getBytes();
                 exchange.sendResponseHeaders(200, responseBytes.length);
                 OutputStream osStream = exchange.getResponseBody();
                 osStream.write(responseBytes);
                 osStream.close();
-
             } catch (Exception e) {
                 e.printStackTrace();
                 exchange.sendResponseHeaders(500, -1);
-            }
-        });
-
-        // Endpoint /sendLocation
-        server.createContext("/sendLocation", exchange -> {
-            if ("POST".equalsIgnoreCase(exchange.getRequestMethod())) {
-                try (BufferedReader reader = new BufferedReader(new InputStreamReader(exchange.getRequestBody()))) {
-                    StringBuilder body = new StringBuilder();
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        body.append(line);
-                    }
-
-                    JSONObject json = new JSONObject(body.toString());
-                    double lat = json.getDouble("latitude");
-                    double lon = json.getDouble("longitude");
-
-                    System.out.printf("Localização exata recebida: LAT %.6f, LON %.6f%n", lat, lon);
-
-                    String response = "https://www.openstreetmap.org/?mlat=" + lat + "&mlon=" + lon + "#map=12/" + lat + "/" + lon;
-                    byte[] responseBytes = response.getBytes();
-                    exchange.sendResponseHeaders(200, responseBytes.length);
-                    OutputStream os = exchange.getResponseBody();
-                    os.write(responseBytes);
-                    os.close();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    exchange.sendResponseHeaders(500, -1);
-                }
-            } else {
-                exchange.sendResponseHeaders(405, -1); // Method not allowed
             }
         });
 
@@ -154,35 +100,4 @@ public class SystemInfoServer {
         server.start();
         System.out.println("Servidor HTTP iniciado na porta 8080...");
     }
-
-    private static String getLocationInfo() throws Exception {
-        // Substitua 'YOUR_API_KEY' pela chave de API real, ou mantenha o nome para ignorar a chave
-        String apiKey = "YOUR_API_KEY"; // Substitua isso pela sua chave de API real
-
-        String urlString;
-        if ("YOUR_API_KEY".equals(apiKey)) {
-            // Se a chave for o valor default "YOUR_API_KEY", usamos a URL sem chave de API
-            urlString = "https://ipinfo.io/json";
-        } else {
-            // Caso contrário, usamos a chave de API real
-            urlString = "https://ipinfo.io/json?token=" + apiKey;
-        }
-
-        URL url = new URL(urlString);
-        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-        conn.setRequestMethod("GET");
-
-        BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-        String inputLine;
-        StringBuilder responseBuilder = new StringBuilder();
-
-        while ((inputLine = in.readLine()) != null) {
-            responseBuilder.append(inputLine);
-        }
-        in.close();
-
-        // Retorna a resposta
-        return responseBuilder.toString();
-    }
-
 }
