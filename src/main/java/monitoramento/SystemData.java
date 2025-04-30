@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class SystemData {
-    private List<SystemObserver> observers = new ArrayList<>();
+    private final List<SystemObserver> observers = new ArrayList<>();
     private String cpuData;
     private String gpuData;
     private String ramData;
