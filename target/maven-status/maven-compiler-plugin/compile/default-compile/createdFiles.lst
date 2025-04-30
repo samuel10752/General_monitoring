@@ -2,3 +2,10 @@ monitoramento\Agent.class
 monitoramento\AgentMonitor.class
 monitoramento\SystemData.class
 monitoramento\SystemObserver.class
+monitoramento\SystemInfoFetcher.class
+monitoramento\SystemDetails.class
+monitoramento\SystemDisplay.class
+monitoramento\Main.class
+monitoramento\SystemInfoServer.class
+monitoramento\NativeLocation.class
+monitoramento\StorageInfoCollector.class
