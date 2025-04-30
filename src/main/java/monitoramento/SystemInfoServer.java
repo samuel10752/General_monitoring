@@ -1,24 +1,28 @@
 package monitoramento;
 
 import com.sun.net.httpserver.HttpServer;
+import org.json.JSONObject;
 import oshi.SystemInfo;
 import oshi.hardware.CentralProcessor;
 import oshi.hardware.GlobalMemory;
 import oshi.software.os.OSFileStore;
 import oshi.software.os.OperatingSystem;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
+import java.net.URL;
 import java.util.List;
 
 public class SystemInfoServer {
     public static void startServer() throws Exception {
         HttpServer server = HttpServer.create(new InetSocketAddress(8080), 0);
 
-        // Endpoint /systeminfo
         server.createContext("/systeminfo", exchange -> {
             try {
-                // Sistema e hardware
+                // Obtém informações do sistema e hardware
                 SystemInfo systemInfo = new SystemInfo();
                 OperatingSystem os = systemInfo.getOperatingSystem();
                 CentralProcessor processor = systemInfo.getHardware().getProcessor();
@@ -39,12 +43,16 @@ public class SystemInfoServer {
                     ));
                 }
 
-                // Latitude e longitude fixas (exemplo: São Paulo)
-                double lat = -23.550520; // Latitude configurada
-                double lon = -46.633308; // Longitude configurada
-                String mapsLink = "https://www.google.com/maps/search/?api=1&query=" + lat + "," + lon;
+                // Obtém localização via API ip-api.com
+                System.out.println("Obtendo localização via IP...");
+                double[] location = fetchLocationFromIP();
+                double lat = location[0];
+                double lon = location[1];
+                String mapsLink = lat != 0.0 && lon != 0.0
+                        ? "https://www.google.com/maps/search/?api=1&query=" + lat + "," + lon
+                        : "Localização indisponível";
 
-                // Montagem do JSON final
+                // Monta resposta JSON
                 String response = String.format(
                         "{\n" +
                                 "    \"hostName\": \"%s\",\n" +
@@ -99,5 +107,35 @@ public class SystemInfoServer {
         server.setExecutor(null);
         server.start();
         System.out.println("Servidor HTTP iniciado na porta 8080...");
+    }
+
+    // Método para obter localização via ip-api.com
+    private static double[] fetchLocationFromIP() {
+        double[] location = {0.0, 0.0}; // Valores padrão
+
+        try {
+            URL url = new URL("http://ip-api.com/json");
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("GET");
+
+            BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+            StringBuilder responseBuilder = new StringBuilder();
+            String line;
+
+            while ((line = reader.readLine()) != null) {
+                responseBuilder.append(line);
+            }
+            reader.close();
+
+            // Processa o JSON da API
+            String response = responseBuilder.toString();
+            JSONObject jsonObject = new JSONObject(response);
+            location[0] = jsonObject.getDouble("lat");
+            location[1] = jsonObject.getDouble("lon");
+
+        } catch (Exception e) {
+            System.err.println("Erro ao obter localização via IP: " + e.getMessage());
+        }
+        return location;
     }
 }
