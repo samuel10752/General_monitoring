@@ -1,9 +1,9 @@
 package monitoramento;
 
 import com.sun.net.httpserver.HttpServer;
-import org.json.JSONObject;
 import oshi.SystemInfo;
 import oshi.hardware.CentralProcessor;
+import oshi.hardware.ComputerSystem;
 import oshi.hardware.GlobalMemory;
 import oshi.software.os.OSFileStore;
 import oshi.software.os.OperatingSystem;
@@ -27,73 +27,123 @@ public class SystemInfoServer {
                 OperatingSystem os = systemInfo.getOperatingSystem();
                 CentralProcessor processor = systemInfo.getHardware().getProcessor();
                 GlobalMemory memory = systemInfo.getHardware().getMemory();
+                ComputerSystem computerSystem = systemInfo.getHardware().getComputerSystem();
                 List<OSFileStore> fileStores = os.getFileSystem().getFileStores();
 
-                // Montagem de informações de armazenamento
-                StringBuilder storageBuilder = new StringBuilder();
+                // Obtendo nome correto do sistema operacional e versão via PowerShell
+                String osName = "Desconhecido";
+                String osVersion = "Desconhecido";
+
+                try {
+                    // Obtendo o nome do sistema operacional
+                    Process process = Runtime.getRuntime().exec("powershell.exe -Command \"(Get-ComputerInfo | select-object OsName).OsName\"");
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+                    osName = reader.readLine().trim();
+                    reader.close();
+
+
+                    // Obtendo a versão do sistema operacional
+                    Process processVersion = Runtime.getRuntime().exec("powershell.exe -Command \"(Get-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion').DisplayVersion\"");
+                    BufferedReader readerVersion = new BufferedReader(new InputStreamReader(processVersion.getInputStream()));
+                    osVersion = readerVersion.readLine().trim();
+                    readerVersion.close();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+
+                // Obtendo o proprietário registrado do sistema via PowerShell
+                String owner = "Desconhecido";
+                try {
+                    Process process = Runtime.getRuntime().exec("powershell.exe -Command \"(Get-ItemProperty 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion').RegisteredOwner\"");
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+                    owner = reader.readLine().trim();
+                    reader.close();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+
+                // Obtendo número de série do computador
+                String serialNumber = computerSystem.getSerialNumber();
+                String manufacturer = computerSystem.getManufacturer();
+                String model = computerSystem.getModel();
+
+                // Obtendo localização automaticamente via API
+                double lat = 0.0, lon = 0.0;
+                try {
+                    URL url = new URL("http://ip-api.com/json/");
+                    HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                    conn.setRequestMethod("GET");
+
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                    String json = reader.readLine();
+                    lat = Double.parseDouble(json.split("\"lat\":")[1].split(",")[0]);
+                    lon = Double.parseDouble(json.split("\"lon\":")[1].split(",")[0]);
+                    reader.close();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+
+                String mapsLink = String.format("https://www.google.com/maps?q=%f,%f", lat, lon);
+
+                // Formatação das informações de armazenamento
+                StringBuilder storageBuilder = new StringBuilder("<ul>");
                 for (OSFileStore fileStore : fileStores) {
-                    if (storageBuilder.length() > 0) {
-                        storageBuilder.append(",");
-                    }
                     storageBuilder.append(String.format(
-                            "{ \"name\": \"%s\", \"totalSpace\": %.2f GB, \"freeSpace\": %.2f GB}",
+                            "<li>Nome: %s<br>Total: %.2f GB<br>Disponivel: %.2f GB</li>",
                             fileStore.getMount(),
                             fileStore.getTotalSpace() / (1024.0 * 1024 * 1024),
                             fileStore.getUsableSpace() / (1024.0 * 1024 * 1024)
                     ));
                 }
+                storageBuilder.append("</ul>");
 
-                // Obtém localização via API ip-api.com
-                System.out.println("Obtendo localização via IP...");
-                double[] location = fetchLocationFromIP();
-                double lat = location[0];
-                double lon = location[1];
-                String mapsLink = lat != 0.0 && lon != 0.0
-                        ? "https://www.google.com/maps/search/?api=1&query=" + lat + "," + lon
-                        : "Localização indisponível";
-
-                // Monta resposta JSON
-                String response = String.format(
-                        "{\n" +
-                                "    \"hostName\": \"%s\",\n" +
-                                "    \"fabricante\": \"%s\",\n" +
-                                "    \"modelo\": \"%s\",\n" +
-                                "    \"processador\": {\n" +
-                                "        \"nome\": \"%s\",\n" +
-                                "        \"nucleosFisicos\": %d,\n" +
-                                "        \"nucleosLogicos\": %d\n" +
-                                "    },\n" +
-                                "    \"memoria\": {\n" +
-                                "        \"total\": %.2f GB\n" +
-                                "    },\n" +
-                                "    \"sistemaOperacional\": {\n" +
-                                "        \"nome\": \"%s\",\n" +
-                                "        \"versao\": \"%s\"\n" +
-                                "    },\n" +
-                                "    \"localizacao\": {\n" +
-                                "        \"latitude\": %f,\n" +
-                                "        \"longitude\": %f,\n" +
-                                "        \"linkGoogleMaps\": \"%s\"\n" +
-                                "    },\n" +
-                                "    \"armazenamento\": [%s]\n" +
-                                "}",
+                // Monta resposta HTML com informações do sistema e mapa interativo
+                String responseHTML = String.format(
+                        "<html><head><title>Informacoes do Sistema</title></head><body>" +
+                                "<h1>Informacoes do Sistema</h1>" +
+                                "<p><strong>Nome do Sistema Operacional:</strong> %s</p>" +
+                                "<p><strong>Versao do SO:</strong> %s</p>" +
+                                "<p><strong>Proprietario Registrado:</strong> %s</p>" +
+                                "<p><strong>Nome do Host:</strong> %s</p>" +
+                                "<p><strong>Fabricante:</strong> %s</p>" +
+                                "<p><strong>Modelo:</strong> %s</p>" +
+                                "<p><strong>Numero de Serie:</strong> %s</p>" +
+                                "<p><strong>Processador:</strong> %s</p>" +
+                                "<p><strong>Nucleos Fisicos:</strong> %d</p>" +
+                                "<p><strong>Nucleos Logicos:</strong> %d</p>" +
+                                "<p><strong>Memoria RAM Total:</strong> %.2f GB</p>" +
+                                "<h2>Localizacao</h2>" +
+                                "<p><strong>Latitude:</strong> %f</p>" +
+                                "<p><strong>Longitude:</strong> %f</p>" +
+                                "<p><strong>Google Maps:</strong> <a href='%s'>Abrir localizacao</a></p>" +
+                                "<div class='map-container'>" +
+                                "<iframe width='600' height='400' src='https://www.google.com/maps?q=%f,%f&output=embed' frameborder='0' allowfullscreen></iframe>" +
+                                "</div>" +
+                                "<h2>Armazenamento</h2>" +
+                                "%s" +
+                                "</body></html>",
+                        osName, // Nome correto do sistema operacional
+                        osVersion, // Versão correta do sistema
+                        owner, // Proprietário registrado
                         os.getNetworkParams().getHostName(),
-                        systemInfo.getHardware().getComputerSystem().getManufacturer(),
-                        systemInfo.getHardware().getComputerSystem().getModel(),
+                        manufacturer,
+                        model,
+                        serialNumber, // Número de série do sistema
                         processor.getProcessorIdentifier().getName(),
                         processor.getPhysicalProcessorCount(),
                         processor.getLogicalProcessorCount(),
                         memory.getTotal() / (1024.0 * 1024 * 1024),
-                        os.getFamily(),
-                        os.getVersionInfo().toString(),
                         lat,
                         lon,
                         mapsLink,
+                        lat,
+                        lon,
                         storageBuilder.toString()
                 );
 
-                // Envio da resposta
-                byte[] responseBytes = response.getBytes();
+                // Envia a resposta como HTML
+                byte[] responseBytes = responseHTML.getBytes();
+                exchange.getResponseHeaders().set("Content-Type", "text/html");
                 exchange.sendResponseHeaders(200, responseBytes.length);
                 OutputStream osStream = exchange.getResponseBody();
                 osStream.write(responseBytes);
@@ -107,35 +157,5 @@ public class SystemInfoServer {
         server.setExecutor(null);
         server.start();
         System.out.println("Servidor HTTP iniciado na porta 8080...");
-    }
-
-    // Método para obter localização via ip-api.com
-    private static double[] fetchLocationFromIP() {
-        double[] location = {0.0, 0.0}; // Valores padrão
-
-        try {
-            URL url = new URL("http://ip-api.com/json");
-            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-            connection.setRequestMethod("GET");
-
-            BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
-            StringBuilder responseBuilder = new StringBuilder();
-            String line;
-
-            while ((line = reader.readLine()) != null) {
-                responseBuilder.append(line);
-            }
-            reader.close();
-
-            // Processa o JSON da API
-            String response = responseBuilder.toString();
-            JSONObject jsonObject = new JSONObject(response);
-            location[0] = jsonObject.getDouble("lat");
-            location[1] = jsonObject.getDouble("lon");
-
-        } catch (Exception e) {
-            System.err.println("Erro ao obter localização via IP: " + e.getMessage());
-        }
-        return location;
     }
 }
