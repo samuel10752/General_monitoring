@@ -7,5 +7,4 @@ monitoramento\SystemDetails.class
 monitoramento\SystemDisplay.class
 monitoramento\Main.class
 monitoramento\SystemInfoServer.class
-monitoramento\NativeLocation.class
 monitoramento\StorageInfoCollector.class
