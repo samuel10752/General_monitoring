@@ -4,6 +4,8 @@ import oshi.SystemInfo;
 import oshi.hardware.ComputerSystem;
 import oshi.software.os.OperatingSystem;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -17,25 +19,45 @@ public class SystemDetails {
             ComputerSystem computerSystem = systemInfo.getHardware().getComputerSystem();
             OperatingSystem operatingSystem = systemInfo.getOperatingSystem();
 
-            // Capturar informações do hardware e sistema operacional
+            // Obtendo informações básicas do sistema
             details.put("serialNumber", computerSystem.getSerialNumber()); // Número de Série
             details.put("computerName", operatingSystem.getNetworkParams().getHostName()); // Nome do Computador
 
-            // Obter nome completo do sistema operacional
-            String systemName = operatingSystem.toString(); // Retorna nome detalhado
-            details.put("systemName", systemName);
+            // Obtendo nome correto do sistema operacional via PowerShell
+            String osName = "Desconhecido";
+            String osVersion = "Desconhecido";
 
-            // Verificar se é Windows 11 Pro
-            if (systemName.contains("Windows 11 Pro")) {
-                details.put("isWindows11Pro", "Sim");
-            } else {
-                details.put("isWindows11Pro", "Não");
+            try {
+                // Obtendo o nome do sistema operacional
+                Process process = Runtime.getRuntime().exec("powershell.exe -Command \"(Get-ComputerInfo | select-object OsName).OsName\"");
+                BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+                osName = reader.readLine().trim();
+                reader.close();
+
+                // Obtendo a versão do sistema operacional
+                Process processVersion = Runtime.getRuntime().exec("powershell.exe -Command \"(Get-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion').DisplayVersion\"");
+                BufferedReader readerVersion = new BufferedReader(new InputStreamReader(processVersion.getInputStream()));
+                osVersion = readerVersion.readLine().trim();
+                readerVersion.close();
+            } catch (Exception e) {
+                e.printStackTrace();
             }
 
-            // Obter versão completa do sistema operacional
-            String systemVersion = operatingSystem.getVersionInfo().toString();
-            details.put("systemVersion", systemVersion);
+            details.put("systemName", osName);
+            details.put("systemVersion", osVersion);
 
+            // Obtendo o proprietário registrado via PowerShell
+            String owner = "Desconhecido";
+            try {
+                Process processOwner = Runtime.getRuntime().exec("powershell.exe -Command \"(Get-ItemProperty 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion').RegisteredOwner\"");
+                BufferedReader readerOwner = new BufferedReader(new InputStreamReader(processOwner.getInputStream()));
+                owner = readerOwner.readLine().trim();
+                readerOwner.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            details.put("registeredOwner", owner);
         } catch (Exception e) {
             e.printStackTrace();
             details.put("error", "Falha ao obter informações do sistema."); // Tratamento de erro
