@@ -7,6 +7,7 @@ eventos/sistemas e disponibilizar funcionalidades administrativas para acompanha
 
 - Java 23 ou superior - https://download.oracle.com/java/23/archive/jdk-23.0.2_windows-x64_bin.exe
 - Maven 3.x
+- Recomendado: IntelliJ IDEA Community Edition - https://download.jetbrains.com/idea/ideaIC-2025.1.1.1.exe
 - Git (opcional)
 
 ## 📦 Instalação
